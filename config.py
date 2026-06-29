@@ -1,15 +1,21 @@
 import os
-import cloudinary
+from urllib.parse import quote_plus
 
 class Config:
-    SECRET_KEY = os.environ.get("SECRET_KEY") or "super-secret-key"
+    SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
 
-    SQLALCHEMY_DATABASE_URI = "mysql+pymysql://u538772268_fund_user:B$S3=|3Gs9q^@srv2210.hstgr.io:3306/u538772268_fund_db"
+    DB_USER = os.getenv("DB_USER")
+    DB_PASSWORD = quote_plus(os.getenv("DB_PASSWORD"))
+    DB_HOST = os.getenv("DB_HOST")
+    DB_NAME = os.getenv("DB_NAME")
+
+    SQLALCHEMY_DATABASE_URI = (
+        f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:3306/{DB_NAME}"
+    )
+
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-
-cloudinary.config(
-    cloud_name="dsfsw8im3",
-    api_key="124269824567964",
-    api_secret="X5rcsWfPf0YYSdNqFTcjcMNiK9A"
-)
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300
+    }

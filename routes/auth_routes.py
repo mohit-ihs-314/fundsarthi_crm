@@ -42,6 +42,22 @@ def create_admin():
     except Exception as e:
         print("CREATE ADMIN ERROR:", e)
         return {"error": str(e)}, 500
+    
+
+@auth_bp.route("/crm/test-admin", methods=["GET"])
+def test_admin():
+    try:
+        count = Admin.query.count()
+        return {
+            "status": "success",
+            "count": count
+        }
+    except Exception as e:
+        print("TEST ADMIN ERROR:", e)
+        return {
+            "status": "error",
+            "message": str(e)
+        }, 500    
 
 
 # ✅ LOGIN
