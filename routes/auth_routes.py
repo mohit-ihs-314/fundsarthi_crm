@@ -8,27 +8,40 @@ auth_bp = Blueprint("auth_bp", __name__)
 # ✅ CREATE ADMIN
 @auth_bp.route("/crm/create-admin", methods=["POST"])
 def create_admin():
-    data = request.json
+    try:
+        data = request.json
+        print("STEP 1")
 
-    existing = Admin.query.filter_by(email=data.get("email")).first()
-    if existing:
-        return {"status": "error", "message": "Admin already exists"}
+        existing = Admin.query.filter_by(email=data.get("email")).first()
+        print("STEP 2")
 
-    hashed = bcrypt.hashpw(
-        data.get("password").encode("utf-8"),
-        bcrypt.gensalt()
-    ).decode("utf-8")
+        if existing:
+            return {"status": "error", "message": "Admin already exists"}
 
-    admin = Admin(
-        name=data.get("name"),
-        email=data.get("email"),
-        password=hashed
-    )
+        hashed = bcrypt.hashpw(
+            data.get("password").encode("utf-8"),
+            bcrypt.gensalt()
+        ).decode("utf-8")
+        print("STEP 3")
 
-    db.session.add(admin)
-    db.session.commit()
+        admin = Admin(
+            name=data.get("name"),
+            email=data.get("email"),
+            password=hashed
+        )
+        print("STEP 4")
 
-    return {"status": "success", "message": "Admin created"}
+        db.session.add(admin)
+        print("STEP 5")
+
+        db.session.commit()
+        print("STEP 6")
+
+        return {"status": "success", "message": "Admin created"}
+
+    except Exception as e:
+        print("CREATE ADMIN ERROR:", e)
+        return {"error": str(e)}, 500
 
 
 # ✅ LOGIN
