@@ -5,7 +5,7 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "super-secret-key")
 
     DB_USER = os.getenv("DB_USER")
-    DB_PASS = quote_plus(os.getenv("DB_PASSWORD"))
+    DB_PASS = quote_plus(os.getenv("DB_PASS"))
     DB_HOST = os.getenv("DB_HOST")
     DB_NAME = os.getenv("DB_NAME")
 
