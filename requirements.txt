@@ -5,3 +5,4 @@ PyMySQL
 gunicorn
 cloudinary
 bcrypt
+requests
