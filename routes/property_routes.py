@@ -4,6 +4,7 @@ from extensions import db
 import uuid
 from datetime import datetime
 import requests
+import pandas as pd
 
 property_bp = Blueprint("property_bp", __name__)
 
