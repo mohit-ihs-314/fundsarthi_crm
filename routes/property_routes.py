@@ -190,3 +190,68 @@ def update_property_status():
         "status": "success",
         "message": "Property updated successfully"
     }
+
+@property_bp.route("/crm/import-properties", methods=["POST"])
+def import_properties():
+
+    if "file" not in request.files:
+        return jsonify({
+            "status":"error",
+            "message":"No file uploaded"
+        }),400
+
+    file=request.files["file"]
+
+    try:
+
+        df=pd.read_csv(file)
+
+        count=0
+
+        for _,row in df.iterrows():
+
+            property=Property(
+                property_id="PROP"+uuid.uuid4().hex[:6].upper(),
+
+                title=row.get("title"),
+                locality=row.get("location"),
+                city=row.get("city"),
+                property_type=row.get("type"),
+
+                price=str(row.get("price")),
+                bedrooms=str(row.get("bedrooms")),
+                bathrooms=str(row.get("bathrooms")),
+                size=str(row.get("area")),
+
+                description=row.get("description"),
+                name=row.get("owner_name"),
+                mobile=str(row.get("owner_mobile")),
+                email=row.get("owner_email"),
+
+                purpose=row.get("purpose"),
+
+                status="approved",
+
+                listing_type=row.get(
+                    "listing_type",
+                    "normal"
+                )
+            )
+
+            db.session.add(property)
+
+            count+=1
+
+        db.session.commit()
+
+        return jsonify({
+            "status":"success",
+            "message":f"{count} properties imported successfully."
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "status":"error",
+            "message":str(e)
+        }),500
