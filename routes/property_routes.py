@@ -294,6 +294,7 @@ def export_properties():
             "status": p.status,
             "listing_type": p.listing_type,
             "photos": photos,
+            "created_at": p.created_at,
         })
 
     df = pd.DataFrame(rows)
