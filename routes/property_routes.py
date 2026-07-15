@@ -5,6 +5,9 @@ import uuid
 from datetime import datetime
 import requests
 import pandas as pd
+from flask import send_file
+import io
+import json
 
 property_bp = Blueprint("property_bp", __name__)
 
@@ -255,3 +258,59 @@ def import_properties():
             "status":"error",
             "message":str(e)
         }),500
+    
+
+@property_bp.route("/crm/export-properties", methods=["GET"])
+def export_properties():
+
+    properties = Property.query.all()
+
+    rows = []
+
+    for p in properties:
+
+        photos = ""
+
+        if p.photos:
+            try:
+                photos = "|".join(json.loads(p.photos))
+            except:
+                photos = p.photos
+
+        rows.append({
+            "title": p.title,
+            "location": p.locality,
+            "city": p.city,
+            "type": p.property_type,
+            "price": p.price,
+            "bedrooms": p.bedrooms,
+            "bathrooms": p.bathrooms,
+            "area": p.size,
+            "description": p.description,
+            "owner_name": p.name,
+            "owner_mobile": p.mobile,
+            "owner_email": p.email,
+            "purpose": p.purpose,
+            "status": p.status,
+            "listing_type": p.listing_type,
+            "photos": photos,
+        })
+
+    df = pd.DataFrame(rows)
+
+    output = io.StringIO()
+
+    df.to_csv(output, index=False)
+
+    mem = io.BytesIO()
+
+    mem.write(output.getvalue().encode("utf-8"))
+
+    mem.seek(0)
+
+    return send_file(
+        mem,
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name="properties.csv",
+    )    
