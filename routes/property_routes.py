@@ -211,10 +211,20 @@ def import_properties():
 
         count=0
 
-        for _,row in df.iterrows():
+        for _, row in df.iterrows():
 
-            property=Property(
-                property_id="PROP"+uuid.uuid4().hex[:6].upper(),
+        # Handle photos
+            photos = []
+
+            if pd.notna(row.get("photos")):
+                photos = [
+                    url.strip()
+                    for url in str(row.get("photos")).split("|")
+                    if url.strip()
+                ]
+
+            property = Property(
+                property_id="PROP" + uuid.uuid4().hex[:6].upper(),
 
                 title=row.get("title"),
                 locality=row.get("location"),
@@ -235,15 +245,14 @@ def import_properties():
 
                 status="approved",
 
-                listing_type=row.get(
-                    "listing_type",
-                    "normal"
-                )
+                listing_type=row.get("listing_type", "normal"),
+
+                photos=json.dumps(photos)   # <-- ADD THIS
             )
 
             db.session.add(property)
 
-            count+=1
+            count += 1
 
         db.session.commit()
 
