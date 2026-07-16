@@ -199,55 +199,152 @@ def import_properties():
 
     if "file" not in request.files:
         return jsonify({
-            "status":"error",
-            "message":"No file uploaded"
-        }),400
+            "status": "error",
+            "message": "No file uploaded"
+        }), 400
 
-    file=request.files["file"]
+    file = request.files["file"]
 
     try:
 
-        df=pd.read_csv(file)
+        df = pd.read_csv(file)
 
-        count=0
+        # Replace NaN with None
+        df = df.where(pd.notnull(df), None)
+
+        count = 0
 
         for _, row in df.iterrows():
 
-        # Handle photos
+            # -----------------------------
+            # PHOTOS
+            # -----------------------------
             photos = []
 
-            if pd.notna(row.get("photos")):
-                photos = [
-                    url.strip()
-                    for url in str(row.get("photos")).split("|")
-                    if url.strip()
-                ]
+            if row.get("photos"):
 
+                try:
+                    # Exported CSV (JSON)
+                    photos = json.loads(row.get("photos"))
+                except:
+                    # Manual CSV (|)
+                    photos = [
+                        url.strip()
+                        for url in str(row.get("photos")).split("|")
+                        if url.strip()
+                    ]
+
+            # -----------------------------
+            # FEATURES
+            # -----------------------------
+            if row.get("features"):
+
+                try:
+                    features = json.loads(row.get("features"))
+                except:
+                    features = {
+                        "highlights": [],
+                        "facilities": [],
+                        "extra": {}
+                    }
+
+            else:
+
+                features = {
+                    "highlights": [],
+                    "facilities": [],
+                    "extra": {
+                        "builder": row.get("builder"),
+                        "project_name": row.get("project_name"),
+                        "furnishing": row.get("furnishing"),
+                        "construction_status": row.get("construction_status"),
+                        "parking": row.get("parking"),
+                        "category": row.get("category")
+                    }
+                }
+
+            # -----------------------------
+            # CREATED DATE
+            # -----------------------------
+            created_at = None
+
+            if row.get("created_at"):
+                created_at = pd.to_datetime(
+                    row.get("created_at"),
+                    errors="coerce"
+                )
+
+            # -----------------------------
+            # PROPERTY
+            # -----------------------------
             property = Property(
-                property_id="PROP" + uuid.uuid4().hex[:6].upper(),
+
+                property_id=row.get("property_id") or (
+                    "PROP" + uuid.uuid4().hex[:6].upper()
+                ),
 
                 title=row.get("title"),
-                locality=row.get("location"),
-                city=row.get("city"),
-                property_type=row.get("type"),
 
-                price=str(row.get("price")),
-                bedrooms=str(row.get("bedrooms")),
-                bathrooms=str(row.get("bathrooms")),
-                size=str(row.get("area")),
+                property_type=row.get("property_type")
+                or row.get("type"),
+
+                city=row.get("city"),
+
+                locality=row.get("locality")
+                or row.get("location"),
+
+                price=str(row.get("price"))
+                if row.get("price") is not None
+                else None,
+
+                size=str(
+                    row.get("size")
+                    or row.get("area")
+                ) if (
+                    row.get("size")
+                    or row.get("area")
+                ) else None,
+
+                bedrooms=str(row.get("bedrooms"))
+                if row.get("bedrooms") is not None
+                else None,
+
+                bathrooms=str(row.get("bathrooms"))
+                if row.get("bathrooms") is not None
+                else None,
 
                 description=row.get("description"),
-                name=row.get("owner_name"),
-                mobile=str(row.get("owner_mobile")),
-                email=row.get("owner_email"),
+
+                name=row.get("name")
+                or row.get("owner_name"),
+
+                mobile=str(
+                    row.get("mobile")
+                    or row.get("owner_mobile")
+                ) if (
+                    row.get("mobile")
+                    or row.get("owner_mobile")
+                ) else None,
+
+                email=row.get("email")
+                or row.get("owner_email"),
+
+                status=row.get("status") or "approved",
+
+                listing_type=row.get("listing_type")
+                or "normal",
 
                 purpose=row.get("purpose"),
 
-                status="approved",
+                photos=json.dumps(photos),
 
-                listing_type=row.get("listing_type", "normal"),
+                videos=row.get("videos"),
 
-                photos=json.dumps(photos)   # <-- ADD THIS
+                floor_plans=row.get("floor_plans"),
+
+                features=json.dumps(features),
+
+                created_at=created_at
             )
 
             db.session.add(property)
@@ -257,16 +354,18 @@ def import_properties():
         db.session.commit()
 
         return jsonify({
-            "status":"success",
-            "message":f"{count} properties imported successfully."
+            "status": "success",
+            "message": f"{count} properties imported successfully."
         })
 
     except Exception as e:
 
+        db.session.rollback()
+
         return jsonify({
-            "status":"error",
-            "message":str(e)
-        }),500
+            "status": "error",
+            "message": str(e)
+        }), 500
     
 
 @property_bp.route("/crm/export-properties", methods=["GET"])
