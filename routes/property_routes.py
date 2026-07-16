@@ -315,3 +315,50 @@ def export_properties():
         as_attachment=True,
         download_name="properties.csv",
     )    
+
+
+@property_bp.route("/crm/delete-property/<property_id>", methods=["DELETE"])
+def delete_property(property_id):
+
+    property = Property.query.filter_by(
+        property_id=property_id
+    ).first()
+
+    if not property:
+        return jsonify({
+            "status":"error",
+            "message":"Property not found"
+        }),404
+
+    db.session.delete(property)
+    db.session.commit()
+
+    return jsonify({
+        "status":"success",
+        "message":"Property deleted"
+    })
+
+
+@property_bp.route("/crm/delete-properties", methods=["POST"])
+def delete_properties():
+
+    data = request.json
+
+    ids = data.get("ids", [])
+
+    if not ids:
+        return jsonify({
+            "status":"error",
+            "message":"No properties selected"
+        }),400
+
+    Property.query.filter(
+        Property.property_id.in_(ids)
+    ).delete(synchronize_session=False)
+
+    db.session.commit()
+
+    return jsonify({
+        "status":"success",
+        "message":f"{len(ids)} properties deleted."
+    })        
