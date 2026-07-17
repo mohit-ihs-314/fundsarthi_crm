@@ -209,142 +209,150 @@ def import_properties():
 
         df = pd.read_csv(file)
 
-        # Replace NaN with None
-        df = df.where(pd.notnull(df), None)
+        # Convert dataframe to object so None stays None
+        df = df.astype(object).where(pd.notnull(df), None)
+
+        def clean(value):
+            if value is None:
+                return None
+
+            if isinstance(value, float) and pd.isna(value):
+                return None
+
+            if isinstance(value, str):
+                value = value.strip()
+                if value == "":
+                    return None
+
+            return value
 
         count = 0
 
         for _, row in df.iterrows():
 
-            # -----------------------------
-            # PHOTOS
-            # -----------------------------
+            # -----------------------------------
+            # Photos
+            # -----------------------------------
             photos = []
 
-            if row.get("photos"):
+            photo_value = clean(row.get("photos"))
+
+            if photo_value:
 
                 try:
-                    # Exported CSV (JSON)
-                    photos = json.loads(row.get("photos"))
-                except:
-                    # Manual CSV (|)
+                    photos = json.loads(photo_value)
+
+                    if not isinstance(photos, list):
+                        photos = []
+
+                except Exception:
                     photos = [
-                        url.strip()
-                        for url in str(row.get("photos")).split("|")
-                        if url.strip()
+                        x.strip()
+                        for x in str(photo_value).split("|")
+                        if x.strip()
                     ]
 
-            # -----------------------------
-            # FEATURES
-            # -----------------------------
-            if row.get("features"):
+            # -----------------------------------
+            # Features
+            # -----------------------------------
+            features = {
+                "highlights": [],
+                "facilities": [],
+                "extra": {
+                    "builder": clean(row.get("builder")),
+                    "project_name": clean(row.get("project_name")),
+                    "furnishing": clean(row.get("furnishing")),
+                    "construction_status": clean(row.get("construction_status")),
+                    "parking": clean(row.get("parking")),
+                    "category": clean(row.get("category"))
+                }
+            }
+
+            feature_value = clean(row.get("features"))
+
+            if feature_value:
 
                 try:
-                    features = json.loads(row.get("features"))
-                except:
-                    features = {
-                        "highlights": [],
-                        "facilities": [],
-                        "extra": {}
-                    }
+                    parsed = json.loads(feature_value)
 
-            else:
+                    if isinstance(parsed, dict):
+                        features = parsed
 
-                features = {
-                    "highlights": [],
-                    "facilities": [],
-                    "extra": {
-                        "builder": row.get("builder"),
-                        "project_name": row.get("project_name"),
-                        "furnishing": row.get("furnishing"),
-                        "construction_status": row.get("construction_status"),
-                        "parking": row.get("parking"),
-                        "category": row.get("category")
-                    }
-                }
+                except Exception:
+                    pass
 
-            # -----------------------------
-            # CREATED DATE
-            # -----------------------------
+            # -----------------------------------
+            # Created Date
+            # -----------------------------------
             created_at = None
 
-            if row.get("created_at"):
+            created_value = clean(row.get("created_at"))
+
+            if created_value:
+
                 created_at = pd.to_datetime(
-                    row.get("created_at"),
+                    created_value,
                     errors="coerce"
                 )
 
-            # -----------------------------
-            # PROPERTY
-            # -----------------------------
+                if pd.isna(created_at):
+                    created_at = None
+
+            # -----------------------------------
+            # Property
+            # -----------------------------------
             property = Property(
 
-                property_id=row.get("property_id") or (
-                    "PROP" + uuid.uuid4().hex[:6].upper()
-                ),
+                property_id=clean(row.get("property_id")) or ("PROP" + uuid.uuid4().hex[:6].upper()),
 
-                title=row.get("title"),
+                title=clean(row.get("title")),
 
-                property_type=row.get("property_type")
-                or row.get("type"),
+                property_type=clean(row.get("property_type")) or clean(row.get("type")),
 
-                city=row.get("city"),
+                city=clean(row.get("city")),
 
-                locality=row.get("locality")
-                or row.get("location"),
+                locality=clean(row.get("locality")) or clean(row.get("location")),
 
-                price=str(row.get("price"))
-                if row.get("price") is not None
+                price=str(clean(row.get("price"))) if clean(row.get("price")) is not None else None,
+
+                size=str(clean(row.get("size")) or clean(row.get("area")))
+                if (clean(row.get("size")) or clean(row.get("area")))
                 else None,
 
-                size=str(
-                    row.get("size")
-                    or row.get("area")
-                ) if (
-                    row.get("size")
-                    or row.get("area")
-                ) else None,
-
-                bedrooms=str(row.get("bedrooms"))
-                if row.get("bedrooms") is not None
+                bedrooms=str(clean(row.get("bedrooms")))
+                if clean(row.get("bedrooms")) is not None
                 else None,
 
-                bathrooms=str(row.get("bathrooms"))
-                if row.get("bathrooms") is not None
+                bathrooms=str(clean(row.get("bathrooms")))
+                if clean(row.get("bathrooms")) is not None
                 else None,
 
-                description=row.get("description"),
+                description=clean(row.get("description")),
 
-                name=row.get("name")
-                or row.get("owner_name"),
+                name=clean(row.get("name")) or clean(row.get("owner_name")),
 
-                mobile=str(
-                    row.get("mobile")
-                    or row.get("owner_mobile")
-                ) if (
-                    row.get("mobile")
-                    or row.get("owner_mobile")
-                ) else None,
+                mobile=str(clean(row.get("mobile")) or clean(row.get("owner_mobile")))
+                if (clean(row.get("mobile")) or clean(row.get("owner_mobile")))
+                else None,
 
-                email=row.get("email")
-                or row.get("owner_email"),
+                email=clean(row.get("email")) or clean(row.get("owner_email")),
 
-                status=row.get("status") or "approved",
+                status=clean(row.get("status")) or "approved",
 
-                listing_type=row.get("listing_type")
-                or "normal",
+                listing_type=clean(row.get("listing_type")) or "normal",
 
-                purpose=row.get("purpose"),
+                purpose=clean(row.get("purpose")),
 
                 photos=json.dumps(photos),
 
-                videos=row.get("videos"),
+                videos=clean(row.get("videos")),
 
-                floor_plans=row.get("floor_plans"),
+                floor_plans=clean(row.get("floor_plans")),
 
                 features=json.dumps(features),
 
                 created_at=created_at
+
             )
 
             db.session.add(property)
