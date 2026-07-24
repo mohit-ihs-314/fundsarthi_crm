@@ -255,12 +255,18 @@ def import_properties():
             # -----------------------------------
             # Features
             # -----------------------------------
+            project_name = (
+                clean(row.get("project_name"))
+                or clean(row.get("Project Name"))
+                or clean(row.get("Project"))
+            )
+
             features = {
                 "highlights": [],
                 "facilities": [],
                 "extra": {
                     "builder": clean(row.get("builder")),
-                    "project_name": clean(row.get("project_name")),
+                    "project_name": project_name,
                     "furnishing": clean(row.get("furnishing")),
                     "construction_status": clean(row.get("construction_status")),
                     "parking": clean(row.get("parking")),
