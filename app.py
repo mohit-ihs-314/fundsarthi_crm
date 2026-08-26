@@ -22,6 +22,12 @@ def create_app():
     from routes.booking_routes import booking_bp
     from routes.property_routes import property_bp
 
+    # Creates any tables that don't exist yet (e.g. app_settings) -
+    # never touches/drops existing tables
+    from models.app_settings import AppSettings
+    with app.app_context():
+        db.create_all()
+
     # ✅ Register routes
     app.register_blueprint(loan_bp, url_prefix="/api")
     app.register_blueprint(user_bp, url_prefix="/api")

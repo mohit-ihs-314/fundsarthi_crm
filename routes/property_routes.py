@@ -8,6 +8,8 @@ import pandas as pd
 from flask import send_file
 import io
 import json
+import cloudinary.uploader
+from models.app_settings import AppSettings, get_settings
 
 property_bp = Blueprint("property_bp", __name__)
 
@@ -38,6 +40,109 @@ def format_date(date_value):
             return date_value
 
     return date_value.strftime("%d %b %Y")
+
+@property_bp.route("/crm/upload-image", methods=["POST"])
+def upload_image():
+    file = request.files.get("file")
+
+    if not file:
+        return jsonify({"status": "error", "message": "No file"}), 400
+
+    if request.content_length and request.content_length > 10 * 1024 * 1024:
+        return jsonify({
+            "status": "error",
+            "message": "File too large (max 10MB)"
+        }), 400
+
+    if not file.mimetype.startswith(("image", "video")):
+        return jsonify({
+            "status": "error",
+            "message": "Unsupported file type"
+        }), 400
+
+    try:
+        resource_type = "video" if file.mimetype.startswith("video") else "image"
+
+        result = cloudinary.uploader.upload(
+            file,
+            resource_type=resource_type
+        )
+
+        return jsonify({
+            "status": "success",
+            "filename": file.filename,
+            "url": result["secure_url"]
+        })
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
+
+
+@property_bp.route("/crm/settings", methods=["GET"])
+def get_app_settings():
+    settings = get_settings()
+
+    return jsonify({
+        "status": "success",
+        "data": {
+            "nearby_radius_km": settings.nearby_radius_km,
+            "budget_deal_max": settings.budget_deal_max,
+            "luxury_min": settings.luxury_min,
+            "luxury_max": settings.luxury_max,
+            "premium_min": settings.premium_min,
+            "recommended_salary_multiplier": settings.recommended_salary_multiplier,
+        }
+    })
+
+
+@property_bp.route("/crm/settings", methods=["POST"])
+def update_app_settings():
+    data = request.json or {}
+    settings = get_settings()
+
+    for field in (
+        "nearby_radius_km",
+        "budget_deal_max",
+        "luxury_min",
+        "luxury_max",
+        "premium_min",
+        "recommended_salary_multiplier",
+    ):
+        if field in data and data.get(field) not in (None, ""):
+            setattr(settings, field, float(data.get(field)))
+
+    db.session.commit()
+
+    return jsonify({"status": "success", "message": "Settings updated"})
+
+
+@property_bp.route("/crm/set-hot-deal", methods=["POST"])
+def set_hot_deal():
+    data = request.json or {}
+    property_id = data.get("id")
+    is_hot_deal = bool(data.get("is_hot_deal"))
+
+    property = Property.query.filter_by(property_id=property_id).first()
+
+    if not property:
+        return jsonify({"status": "error", "message": "Property not found"}), 404
+
+    try:
+        features = json.loads(property.features) if property.features else {}
+    except Exception:
+        features = {}
+
+    features.setdefault("extra", {})
+    features["extra"]["is_hot_deal"] = is_hot_deal
+
+    property.features = json.dumps(features)
+    db.session.commit()
+
+    return jsonify({"status": "success", "message": "Hot Deal flag updated"})
+
 
 @property_bp.route("/crm/properties", methods=["GET"])
 def get_properties():
@@ -270,7 +375,16 @@ def import_properties():
                     "furnishing": clean(row.get("furnishing")),
                     "construction_status": clean(row.get("construction_status")),
                     "parking": clean(row.get("parking")),
-                    "category": clean(row.get("category"))
+                    "category": clean(row.get("category")),
+                    "owner_type": clean(row.get("owner_type")),
+                    # the specific sub-type (apartment/shop/residential-plot/etc) -
+                    # the broader category goes on the property_type DB column instead
+                    "property_type": clean(row.get("sub_property_type")) or clean(row.get("property_type")),
+                    "plot_area": clean(row.get("plot_area")),
+                    "frontage": clean(row.get("frontage")),
+                    "road_width": clean(row.get("road_width")),
+                    "dimensions": clean(row.get("dimensions")),
+                    "washrooms": clean(row.get("washrooms")),
                 }
             }
 
@@ -313,11 +427,20 @@ def import_properties():
 
                 title=clean(row.get("title")),
 
-                property_type=clean(row.get("property_type")) or clean(row.get("type")),
+                property_type=(
+                    clean(row.get("category"))
+                    or clean(row.get("property_type"))
+                    or clean(row.get("type"))
+                    or "residential"
+                ),
 
                 city=clean(row.get("city")),
 
                 locality=clean(row.get("locality")) or clean(row.get("location")),
+
+                latitude=float(clean(row.get("latitude"))) if clean(row.get("latitude")) is not None else None,
+
+                longitude=float(clean(row.get("longitude"))) if clean(row.get("longitude")) is not None else None,
 
                 price=str(clean(row.get("price"))) if clean(row.get("price")) is not None else None,
 
