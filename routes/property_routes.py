@@ -121,27 +121,109 @@ def update_app_settings():
 
 @property_bp.route("/crm/set-hot-deal", methods=["POST"])
 def set_hot_deal():
-    data = request.json or {}
-    property_id = data.get("id")
-    is_hot_deal = bool(data.get("is_hot_deal"))
 
-    property = Property.query.filter_by(property_id=property_id).first()
+    data = request.json or {}
+
+    property_id = data.get("id")
+
+    if not property_id:
+        return jsonify({
+            "status": "error",
+            "message": "Property ID is required"
+        }), 400
+
+    property = Property.query.filter_by(
+        property_id=str(property_id)
+    ).first()
 
     if not property:
-        return jsonify({"status": "error", "message": "Property not found"}), 404
+        return jsonify({
+            "status": "error",
+            "message": "Property not found"
+        }), 404
 
-    try:
-        features = json.loads(property.features) if property.features else {}
-    except Exception:
-        features = {}
+    value = data.get("is_hot_deal", False)
 
-    features.setdefault("extra", {})
-    features["extra"]["is_hot_deal"] = is_hot_deal
+    # Handle boolean / integer / string safely
+    if isinstance(value, str):
+        is_hot_deal = value.lower() in (
+            "true",
+            "1",
+            "yes",
+            "on"
+        )
+    else:
+        is_hot_deal = bool(value)
 
-    property.features = json.dumps(features)
+    property.is_hot_deal = is_hot_deal
+
+    # If disabling Hot Deal, reset its order
+    if not is_hot_deal:
+        property.hot_deal_order = 0
+
     db.session.commit()
 
-    return jsonify({"status": "success", "message": "Hot Deal flag updated"})
+    return jsonify({
+        "status": "success",
+        "message": "Hot Deal flag updated",
+        "data": {
+            "id": property.property_id,
+            "is_hot_deal": property.is_hot_deal
+        }
+    })
+
+@property_bp.route("/crm/set-trending", methods=["POST"])
+def set_trending():
+
+    data = request.json or {}
+
+    property_id = data.get("id")
+
+    if not property_id:
+        return jsonify({
+            "status": "error",
+            "message": "Property ID is required"
+        }), 400
+
+    property = Property.query.filter_by(
+        property_id=str(property_id)
+    ).first()
+
+    if not property:
+        return jsonify({
+            "status": "error",
+            "message": "Property not found"
+        }), 404
+
+    value = data.get("is_trending", False)
+
+    # Handle boolean / integer / string safely
+    if isinstance(value, str):
+        is_trending = value.lower() in (
+            "true",
+            "1",
+            "yes",
+            "on"
+        )
+    else:
+        is_trending = bool(value)
+
+    property.is_trending = is_trending
+
+    # If disabling Trending, reset its order
+    if not is_trending:
+        property.trending_order = 0
+
+    db.session.commit()
+
+    return jsonify({
+        "status": "success",
+        "message": "Trending flag updated",
+        "data": {
+            "id": property.property_id,
+            "is_trending": property.is_trending
+        }
+    })
 
 
 @property_bp.route("/crm/properties", methods=["GET"])
@@ -170,18 +252,29 @@ def get_properties():
 
         result.append({
             "id": p.property_id,
+
             "title": p.title or "",
+
             "location": p.locality or "",
+
             "city": p.city or "",
+
             "type": p.property_type or "",
+
             "price": p.price or "",
+
             "bedrooms": int(p.bedrooms) if p.bedrooms else None,
+
             "bathrooms": int(p.bathrooms) if p.bathrooms else None,
+
             "area": parse_area(p.size),
 
             "description": p.description or "",
+
             "owner_name": p.name or "",
+
             "owner_mobile": p.mobile or "",
+
             "owner_email": p.email or "",
 
             "status": (p.status or "pending").lower(),
@@ -189,7 +282,20 @@ def get_properties():
             "listedDate": format_date(p.created_at),
 
             "photos": photos,
+
             "features": features,
+
+            # -----------------------------------
+            # MANUAL PROMOTION
+            # -----------------------------------
+
+            "is_hot_deal": bool(p.is_hot_deal),
+
+            "is_trending": bool(p.is_trending),
+
+            "hot_deal_order": p.hot_deal_order or 0,
+
+            "trending_order": p.trending_order or 0,
         })
 
     return jsonify(result)
