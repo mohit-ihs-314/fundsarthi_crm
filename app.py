@@ -21,6 +21,7 @@ def create_app():
     from routes.consultant_routes import consultant_bp
     from routes.booking_routes import booking_bp
     from routes.property_routes import property_bp
+    from routes.banner_routes import banner_bp
 
     # Creates any tables that don't exist yet (e.g. app_settings) -
     # never touches/drops existing tables
@@ -34,6 +35,14 @@ def create_app():
     app.register_blueprint(consultant_bp, url_prefix="/api")
     app.register_blueprint(booking_bp, url_prefix="/api")
     app.register_blueprint(property_bp, url_prefix="/api")
+    app.register_blueprint(banner_bp)
+    # ✅ Health Check
+    @app.route("/")
+    def home():
+      return {
+        "status": "running",
+        "service": "Fundsarthi CRM API"
+    }
 
     return app
 
