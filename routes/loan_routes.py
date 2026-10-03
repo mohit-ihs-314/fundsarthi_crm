@@ -61,7 +61,7 @@ def get_loans():
             "progress": progress,
             "isRejected": (loan.status or "").lower() == "rejected",
             "notes": loan.notes or "",
-            "appliedDate": "N/A",
+            "appliedDate": loan.created_at.isoformat() if loan.created_at else None,
             "city": user.city if user else "",
             "employment": user.employment if user else "",
             "income": user.income if user else 0,

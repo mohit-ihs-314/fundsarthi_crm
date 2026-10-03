@@ -22,6 +22,9 @@ def create_app():
     from routes.booking_routes import booking_bp
     from routes.property_routes import property_bp
     from routes.banner_routes import banner_bp
+    from routes.property_enquiry_routes import property_enquiry_bp
+    from routes.partner_routes import partner_bp
+
 
     # Creates any tables that don't exist yet (e.g. app_settings) -
     # never touches/drops existing tables
@@ -35,7 +38,9 @@ def create_app():
     app.register_blueprint(consultant_bp, url_prefix="/api")
     app.register_blueprint(booking_bp, url_prefix="/api")
     app.register_blueprint(property_bp, url_prefix="/api")
+    app.register_blueprint(property_enquiry_bp)
     app.register_blueprint(banner_bp)
+    app.register_blueprint(partner_bp)
     # ✅ Health Check
     @app.route("/")
     def home():

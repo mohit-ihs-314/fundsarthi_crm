@@ -9,6 +9,7 @@ class Loan(db.Model):
     loan_amount = db.Column(db.String(20))
     loan_type = db.Column(db.String(50))
     existing_emi = db.Column(db.String(20))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
     notes = db.Column(db.Text)
     status = db.Column(db.String(50))
     application_id = db.Column(db.String(20), unique=True)
